@@ -1,21 +1,24 @@
-FROM ryancicak759/gpu-venv:cuda12.1.1 
+# Use base image with CUDA 12.1.1
+FROM ryancicak759/gpu-venv:cuda12.1.1
 
-#I DID NOT TEST TensorFlow with CUDA 12.1.1, as the pip command below installing tensorflow 2.13 must be constructed
-#to pull for CUDA 12.1, as I did for pytorch
-# Enable NVIDIA repos with wildcard pattern matching
+# Enable NVIDIA repos to temporarily install additional packages if needed
 RUN cd /etc/apt/sources.list.d && \
-    mv cuda-*-ubuntu2204-x86_64.list.disabled cuda-repo.list 2>/dev/null || true
+    test -f cuda-ubuntu2204-x86_64.list.disabled && \
+    mv cuda-ubuntu2204-x86_64.list.disabled cuda-ubuntu2204-x86_64.list || true
 
-# Tensorflow would require cuda-toolkit-11-8 been installed.
+# Tensorflow would require cuda-toolkit-12-1 been installed.
 RUN apt-get update \
     && apt-get --no-install-recommends -y install cuda-toolkit-12-1
 
-# Disable NVIDIA repos to prevent accidental upgrades.
-# Disable repos using same wildcard pattern
-RUN cd /etc/apt/sources.list.d && \
-    mv cuda-*-ubuntu2204-x86_64.list cuda-repo.disabled 2>/dev/null || true
+# Upgrade pip to ensure compatibility with TensorFlow installation
+RUN /databricks/python3/bin/python -m pip install --upgrade pip
 
-# install the tensorflow versions
+# Disable NVIDIA repos to prevent accidental upgrades
+RUN cd /etc/apt/sources.list.d && \
+    test -f cuda-ubuntu2204-x86_64.list && \
+    mv cuda-ubuntu2204-x86_64.list cuda-ubuntu2204-x86_64.list.disabled || true
+
+# Install TensorFlow 2.17 and TensorBoard (compatible with CUDA 12.1)
 RUN /databricks/python3/bin/pip install \
-    tensorflow==2.13.0 \
-    tensorboard==2.13.0
+    tensorflow==2.17.0 \
+    tensorboard==2.17.0
